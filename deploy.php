@@ -11,13 +11,50 @@
 // =========================================[ Configuration start ]===
 
 /**
- * It's preferable to configure the script using `deploy-config.php` file.
+ * It's required to configure the script using `deploy-[site]-config.php` file.
  *
- * Rename `deploy-config.example.php` to `deploy-config.php` and edit the
+ * Rename `deploy-config.example.php` to `deploy-[site]-config.php` and edit the
  * configuration options there instead of here. That way, you won't have to edit
  * the configuration again if you download the new version of `deploy.php`.
  */
-if (file_exists(basename(__FILE__, '.php').'-config.php')) require_once basename(__FILE__, '.php').'-config.php';
+if (isset($_GET['site'])  && file_exists('deploy-'.$_GET['site'].'-config.php')) {
+	require_once 'deploy-'.$_GET['site'].'-config.php'
+} else {
+	header('HTTP/1.0 403 Forbidden');
+}
+
+/**
+ * Define the timezone to be used for logging. 
+ * This is used due to requirement for date to now hace a defined timezone.
+ * Defaults to UTC
+ *
+ * @var string
+ */
+if (!defined('LOG_TIMEZONE')) define('LOG_TIMEZONE', 'UTC');
+
+/**
+ * Define the location of the git command. 
+ * Defaults to git
+ *
+ * @var string
+ */
+if (!defined('GIT_COMMAND')) define('GIT_COMMAND', 'git');
+
+/**
+ * Define the location of the git command. 
+ * Defaults to rsync
+ *
+ * @var string
+ */
+if (!defined('RSYNC_COMMAND')) define('RSYNC_COMMAND', 'rsync');
+
+/**
+ * Define the location of the git command. 
+ * Defaults to tar
+ *
+ * @var string
+ */
+if (!defined('TAR_COMMAND')) define('TAR_COMMAND', 'tar');
 
 /**
  * Protect the script from unauthorized access by using a secret access token.
@@ -190,13 +227,35 @@ if (SECRET_ACCESS_TOKEN === 'BetterChangeMeNowOrSufferTheConsequences') {
 
 Checking the environment ...
 
-Running as <b><?php echo trim(shell_exec('whoami')); ?></b>.
+Running as <b><?php
+$out = exec('/opt/local/bin/whoami 2>&1', $tmp, $return_code );
+printf('%s : rc - %d', implode('/n', $tmp), $return_code);
+
+?></b>.
 
 <?php
+date_default_timezone_set(LOG_TIMEZONE);
+
 // Check if the required programs are available
-$requiredBinaries = array('git', 'rsync');
+
+
+$requiredBinaries = array();
+if (!defined('GIT_COMMAND') || GIT_COMMAND === 'git') {
+    $requiredBinaries[] = shell_exec(sprintf('which $s', GIT_COMMAND));
+} else {
+    $requiredBinaries[] = GIT_COMMAND;
+}
+if (!defined('RSYNC_COMMAND') || GIT_COMMAND === 'rsync') {
+    $requiredBinaries[] = shell_exec(sprintf('which $s', RSYNC_COMMAND));
+} else {
+    $requiredBinaries[] = RSYNC_COMMAND;
+}
 if (defined('BACKUP_DIR') && BACKUP_DIR !== false) {
-	$requiredBinaries[] = 'tar';
+    if (!defined('TAR_COMMAND') || GIT_COMMAND === 'tar') {
+        $requiredBinaries[] = shell_exec(sprintf('which $s', TAR_COMMAND));
+    } else {
+        $requiredBinaries[] = TAR_COMMAND;
+    }
 	if (!is_dir(BACKUP_DIR) || !is_writable(BACKUP_DIR)) {
 		die(sprintf('<div class="error">BACKUP_DIR `%s` does not exists or is not writeable.</div>', BACKUP_DIR));
 	}
@@ -205,14 +264,14 @@ if (defined('USE_COMPOSER') && USE_COMPOSER === true) {
 	$requiredBinaries[] = 'composer --no-ansi';
 }
 foreach ($requiredBinaries as $command) {
-	$path = trim(shell_exec('which '.$command));
-	if ($path == '') {
+	//$path = trim(shell_exec('which '.$command));
+    if ($command === '') {
 		die(sprintf('<div class="error"><b>%s</b> not available. It needs to be installed on the server for this script to work.</div>', $command));
 	} else {
-		$version = explode("\n", shell_exec($command.' --version'));
+		$version = shell_exec($command.' --version');
 		printf('<b>%s</b> : %s'."\n"
-			, $path
-			, $version[0]
+			, $command
+			, $version
 		);
 	}
 }
@@ -232,8 +291,9 @@ $commands = array();
 if (!is_dir(TMP_DIR)) {
 	// Clone the repository into the TMP_DIR
 	$commands[] = sprintf(
-		'git clone --depth=1 --branch %s %s %s'
-		, BRANCH
+		'%s clone --depth=1 --branch %s %s %s'
+        , GIT_COMMAND
+        , BRANCH
 		, REMOTE_REPOSITORY
 		, TMP_DIR
 	);
@@ -241,28 +301,32 @@ if (!is_dir(TMP_DIR)) {
 	// TMP_DIR exists and hopefully already contains the correct remote origin
 	// so we'll fetch the changes and reset the contents.
 	$commands[] = sprintf(
-		'git --git-dir="%s.git" --work-tree="%s" fetch origin %s'
-		, TMP_DIR
+		'%s --git-dir="%s.git" --work-tree="%s" fetch origin %s'
+        , GIT_COMMAND
+        , TMP_DIR
 		, TMP_DIR
 		, BRANCH
 	);
 	$commands[] = sprintf(
-		'git --git-dir="%s.git" --work-tree="%s" reset --hard FETCH_HEAD'
-		, TMP_DIR
+		'%s --git-dir="%s.git" --work-tree="%s" reset --hard FETCH_HEAD'
+        , GIT_COMMAND
+        , TMP_DIR
 		, TMP_DIR
 	);
 }
 
 // Update the submodules
 $commands[] = sprintf(
-	'git submodule update --init --recursive'
+    '%s submodule update --init --recursive'
+    , GIT_COMMAND
 );
 
 // Describe the deployed version
 if (defined('VERSION_FILE') && VERSION_FILE !== '') {
 	$commands[] = sprintf(
-		'git --git-dir="%s.git" --work-tree="%s" describe --always > %s'
-		, TMP_DIR
+		'%s --git-dir="%s.git" --work-tree="%s" describe --always > %s'
+        , GIT_COMMAND
+        , TMP_DIR
 		, TMP_DIR
 		, VERSION_FILE
 	);
@@ -272,8 +336,9 @@ if (defined('VERSION_FILE') && VERSION_FILE !== '') {
 // without the BACKUP_DIR for the case when it's inside the TARGET_DIR
 if (defined('BACKUP_DIR') && BACKUP_DIR !== false) {
 	$commands[] = sprintf(
-		"tar --exclude='%s*' -czf %s/%s-%s-%s.tar.gz %s*"
-		, BACKUP_DIR
+		"%s --exclude='%s*' -czfP %s/%s-%s-%s.tar.gz %s*"
+        , TAR_COMMAND
+        , BACKUP_DIR
 		, BACKUP_DIR
 		, basename(TARGET_DIR)
 		, md5(TARGET_DIR)
@@ -303,8 +368,9 @@ foreach (unserialize(EXCLUDE) as $exc) {
 }
 // Deployment command
 $commands[] = sprintf(
-	'rsync -rltgoDzvO %s %s %s %s'
-	, TMP_DIR
+	'%s -rltgoDzvO %s %s %s %s'
+    , RSYNC_COMMAND
+    , TMP_DIR
 	, TARGET_DIR
 	, (DELETE_FILES) ? '--delete-after' : ''
 	, $exclude
@@ -335,7 +401,12 @@ foreach ($commands as $command) {
 <div class="output">%s</div>
 '
 		, htmlentities(trim($command))
-		, htmlentities(trim(implode("\n", $tmp)))
+        , htmlentities(sprintf('Return code: %d %sOutput: %s%s'
+            , $return_code
+            , PHP_EOL
+            , PHP_EOL
+            , trim(implode("\n", $tmp)
+        )))
 	);
 	$output .= ob_get_contents();
 	ob_flush(); // Try to output everything as it happens

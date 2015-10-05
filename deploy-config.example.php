@@ -28,7 +28,8 @@ define('SECRET_ACCESS_TOKEN', 'BetterChangeMeNowOrSufferTheConsequences');
  *
  * @var string
  */
-define('REMOTE_REPOSITORY', 'https://github.com/markomarkovic/simple-php-git-deploy.git');
+define('REMOTE_REPOSITORY', 'https://github.com/pjmahoney/simple-php-git-deploy.git');
+
 
 /**
  * The branch that's being deployed.
@@ -37,6 +38,31 @@ define('REMOTE_REPOSITORY', 'https://github.com/markomarkovic/simple-php-git-dep
  * @var string
  */
 define('BRANCH', 'master');
+
+/**
+ * Location of git command to be used for cloning repos 
+ * Defaults to system git
+ *
+ * @var string
+ */
+define('GIT_COMMAND', 'git');
+
+/**
+ * Location of tar command to be used for cloning repos 
+ * Defaults to system tar
+ *
+ * @var string
+ */
+define('TAR_COMMAND', 'tar');
+
+/**
+ * Location of rsync command to be used for cloning repos 
+ * Defaults to system rsync
+ *
+ * @var string
+ */
+define('TAR_COMMAND', 'rsync');
+
 
 /**
  * The location that the code is going to be deployed to.

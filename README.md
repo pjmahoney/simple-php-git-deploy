@@ -17,10 +17,13 @@ _Automatically deploy the code using PHP and Git._
 ## Usage
 
  * Configure the script and put it somewhere that's accessible from the
-   Internet. The preferred way to configure it is to use `deploy-config.php` file.
-   Rename `deploy-config.example.php` to `deploy-config.php` and edit the
+   Internet. The preferred way to configure it is to use `deploy-[site]-config.php` file.
+   Rename `deploy-config.example.php` to `deploy-[site]-config.php`, where [site] is
+   an identifier to specify a configuration file and edit the
    configuration options there. That way, you won't have to edit the configuration
-   again if you download the new version of `deploy.php`.
+   again if you download the new version of `deploy.php`. The use of the [site]
+   directive allows you to have multiple directories configured for deployment with
+   one script.
  * Configure your git repository to call this script when the code is updated.
    The instructions for GitHub and Bitbucket are below.
 
@@ -31,7 +34,7 @@ _Automatically deploy the code using PHP and Git._
     SSH key.
  1. Go to `https://github.com/USERNAME/REPOSITORY/settings/hooks`.
  1. Click **Add webhook** in the **Webhooks** panel.
- 1. Enter the **Payload URL** for your deployment script e.g. `http://example.com/deploy.php?sat=YourSecretAccessTokenFromDeployFile`.
+ 1. Enter the **Payload URL** for your deployment script e.g. `http://example.com/deploy.php?site=ConfigName&sat=YourSecretAccessTokenFromDeployFile`.
  1. _Optional_ Choose which events should trigger the deployment.
  1. Make sure that the **Active** checkbox is checked.
  1. Click **Add webhook**.
@@ -43,7 +46,7 @@ _Automatically deploy the code using PHP and Git._
     server SSH key.
  1. Go to `https://bitbucket.org/USERNAME/REPOSITORY/admin/services`.
  1. Add **POST** service.
- 1. Enter the URL to your deployment script e.g. `http://example.com/deploy.php?sat=YourSecretAccessTokenFromDeployFile`.
+ 1. Enter the URL to your deployment script e.g. `http://example.com/deploy.php?site=ConfigName&sat=YourSecretAccessTokenFromDeployFile`.
  1. Click **Save**.
 
 ### Generic Git
