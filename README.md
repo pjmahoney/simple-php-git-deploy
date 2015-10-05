@@ -18,10 +18,10 @@ _Automatically deploy the code using PHP and Git._
 
  * Configure the script and put it somewhere that's accessible from the
    Internet. The preferred way to configure it is to use `deploy-[site]-config.php` file.
-   Rename `deploy-config.example.php` to `deploy-[site]-config.php`, where [site] is
+   Rename `deploy-config.example.php` to `deploy-[site]-config.php`, where `[site]` is
    an identifier to specify a configuration file and edit the
    configuration options there. That way, you won't have to edit the configuration
-   again if you download the new version of `deploy.php`. The use of the [site]
+   again if you download the new version of `deploy.php`. The use of the `[site]`
    directive allows you to have multiple directories configured for deployment with
    one script.
  * Configure your git repository to call this script when the code is updated.
